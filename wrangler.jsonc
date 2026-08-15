@@ -1,0 +1,42 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "webrtc-turn-benchmark",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-08-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "./dist/browser"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "ROOMS",
+        "class_name": "Room"
+      },
+      {
+        "name": "TURN_CREDENTIAL_LIMITER",
+        "class_name": "TurnCredentialLimiter"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["Room"]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": ["TurnCredentialLimiter"]
+    }
+  ],
+  "vars": {
+    "CF_TURN_KEY_ID": "dc7b92dfbe48c2c89bcae0387807b079",
+    "MAX_ROOM_MEMBERS": "8",
+    "MAX_TURN_CREDENTIALS_PER_HOUR": "32"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

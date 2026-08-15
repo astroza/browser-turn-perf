@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebRTC TURN benchmark agent</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main>
+      <form id="manual-config">
+        <h1>WebRTC TURN benchmark</h1>
+        <p>Manual browser test mode. Use the same room settings on each participant, with a unique agent ID.</p>
+        <label>
+          Signaling server URL
+          <input id="signal-origin" name="signal-origin" type="url" required />
+        </label>
+        <label>
+          Room ID
+          <input name="room" value="browser_test_001" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" required />
+        </label>
+        <label>
+          Agent ID
+          <input name="agent-id" value="browser-1" pattern="[A-Za-z0-9][A-Za-z0-9_-]*" required />
+        </label>
+        <label>
+          Expected members
+          <input name="expected-members" type="number" min="2" max="8" value="2" required />
+        </label>
+        <label>
+          Connection mode
+          <select name="mode">
+            <option value="relay">Force Cloudflare TURN relay</option>
+            <option value="direct">Direct connection, no TURN</option>
+          </select>
+        </label>
+        <label>
+          Video source
+          <select name="video-source">
+            <option value="canvas">Synthetic canvas test pattern</option>
+            <option value="webcam">This browser's webcam</option>
+          </select>
+        </label>
+        <button type="submit">Join five-minute test</button>
+        <p id="setup-error" role="alert"></p>
+      </form>
+      <p id="status" aria-live="polite">Waiting for test configuration...</p>
+    </main>
+    <section id="remote-media" aria-label="Remote media"></section>
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

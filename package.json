@@ -1,0 +1,32 @@
+{
+  "name": "webrtc-turn-benchmark",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "agent": "tsx src/agent/cli.ts",
+    "build": "npm run build:web && npm run check",
+    "build:web": "vite build",
+    "check": "tsc --noEmit",
+    "deploy": "npm run build:web && wrangler deploy",
+    "dev": "npm run build:web && wrangler dev",
+    "report": "tsx src/report/cli.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "types": "wrangler types worker-configuration.d.ts"
+  },
+  "dependencies": {
+    "tweetnacl": "^1.0.3",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.10.11",
+    "@types/node": "^22.15.3",
+    "playwright": "^1.55.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.33.1"
+  }
+}
