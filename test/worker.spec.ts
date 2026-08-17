@@ -2,6 +2,7 @@ import { SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
 import { clientMessageSchema } from "../src/shared/protocol";
+import { overrideTurnServer } from "../src/shared/turn";
 import { normalizeCloudflareIceServers } from "../src/worker/index";
 
 describe("signaling Worker", () => {
@@ -61,6 +62,27 @@ describe("signaling protocol", () => {
     });
 
     expect(iceServers).toEqual([{ urls: "turn:turn.cloudflare.com:3478?transport=tcp" }]);
+  });
+
+  it("replaces Cloudflare TURN URLs while retaining the minted credentials", () => {
+    const iceServers = overrideTurnServer(
+      [
+        {
+          credential: "credential",
+          urls: ["turn:turn.cloudflare.com:3478?transport=udp", "turn:turn.cloudflare.com:3478?transport=tcp"],
+          username: "username",
+        },
+      ],
+      "turn:turn.example:3478?transport=udp",
+    );
+
+    expect(iceServers).toEqual([
+      {
+        credential: "credential",
+        urls: "turn:turn.example:3478?transport=udp",
+        username: "username",
+      },
+    ]);
   });
 
   it("accepts a bounded ICE candidate signal", () => {

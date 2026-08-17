@@ -15,6 +15,7 @@ export type BrowserAgentConfig = {
   room: string;
   sampleIntervalMs: number;
   signalOrigin: string;
+  turnServer?: string;
   videoSource: VideoSource;
 };
 

@@ -16,6 +16,7 @@ type AgentOptions = {
   outputDirectory: string;
   room: string;
   signalOrigin: string;
+  turnServer: string | undefined;
   videoY4mPath: string | undefined;
 };
 
@@ -29,6 +30,7 @@ function usage(): string {
     "  --agent-id <ID>            Unique ID for this host",
     "  --expected-members <N>     Number of agents in the mesh",
     "  --mode <relay|direct>      Force TURN relay or forbid relay candidates",
+    "  --turn-server <URL>        Replace Cloudflare's TURN URL but retain its credentials",
     "  --access-login              Print an Access URL and wait for user authorization",
     "  --video-y4m <PATH>         Use a Y4M file through Chromium's fake camera",
     "  --output <PATH>            Local artifact directory",
@@ -103,6 +105,22 @@ function identifierOption(values: Map<string, string>, name: string): string {
   return value;
 }
 
+function turnServerOption(values: Map<string, string>): string | undefined {
+  const value = values.get("turn-server");
+  if (value === undefined) {
+    return undefined;
+  }
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "turn:" && url.protocol !== "turns:") {
+      throw new Error();
+    }
+  } catch {
+    throw new Error("--turn-server must be a valid turn or turns URL");
+  }
+  return value;
+}
+
 function optionsFrom(argv: string[]): AgentOptions {
   const values = parseArguments(argv);
   const knownOptions = new Set([
@@ -114,6 +132,7 @@ function optionsFrom(argv: string[]): AgentOptions {
     "output",
     "room",
     "signal-url",
+    "turn-server",
     "video-y4m",
   ]);
   for (const option of values.keys()) {
@@ -141,6 +160,10 @@ function optionsFrom(argv: string[]): AgentOptions {
   if (mode !== "relay" && mode !== "direct") {
     throw new Error("--mode must be relay or direct");
   }
+  const turnServer = turnServerOption(values);
+  if (turnServer !== undefined && mode !== "relay") {
+    throw new Error("--turn-server requires --mode relay");
+  }
 
   return {
     accessLogin: values.has("access-login"),
@@ -151,6 +174,7 @@ function optionsFrom(argv: string[]): AgentOptions {
     outputDirectory: requiredOption(values, "output"),
     room: identifierOption(values, "room"),
     signalOrigin: parsedUrl.origin,
+    turnServer,
     videoY4mPath: values.has("video-y4m") ? resolve(requiredOption(values, "video-y4m")) : undefined,
   };
 }
@@ -175,6 +199,9 @@ function eventIsValid(value: unknown): value is BrowserAgentEvent {
 async function main(): Promise<void> {
   const options = optionsFrom(process.argv.slice(2));
   await validateVideoY4m(options.videoY4mPath);
+  if (options.turnServer !== undefined) {
+    console.log(`Overriding TURN server with ${options.turnServer}`);
+  }
   const cloudflareAccessToken = options.accessLogin
     ? await authorizeCloudflareAccess(options.signalOrigin, {
         onAuthorizationUrl: (url) => {
@@ -219,6 +246,7 @@ async function main(): Promise<void> {
     room: options.room,
     sampleIntervalMs: 1_000,
     signalOrigin: options.signalOrigin,
+    turnServer: options.turnServer,
     videoSource,
   };
   let complete = false;

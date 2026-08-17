@@ -127,6 +127,8 @@ npm run agent -- \
 
 Relay mode requests Cloudflare TURN credentials and uses `iceTransportPolicy: "relay"`. A run fails unless the selected candidate pair exchanged bytes and both candidate stats are `relay`.
 
+To use a different TURN endpoint that accepts credentials minted by the Cloudflare TURN key, add `--turn-server turn:turn.example:3478?transport=udp` to every relay agent. The agent still requests Cloudflare credentials, but replaces the returned TURN URLs with the supplied endpoint and prints the override at startup. `--turn-server` is not valid in direct mode.
+
 ## Manual Browser Test
 
 After deploying, open the Worker root URL in a normal desktop browser:

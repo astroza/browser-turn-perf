@@ -12,6 +12,7 @@ import type {
 } from "../shared/config";
 import type { SignalPayload } from "../shared/protocol";
 import { identifierSchema } from "../shared/protocol";
+import { overrideTurnServer } from "../shared/turn";
 
 declare global {
   interface Window {
@@ -720,7 +721,7 @@ class BenchmarkAgent {
     if (!this.isTurnCredentialResponse(body)) {
       throw new Error("TURN credential response was invalid");
     }
-    return body.iceServers;
+    return runConfig.turnServer === undefined ? body.iceServers : overrideTurnServer(body.iceServers, runConfig.turnServer);
   }
 
   private isTurnCredentialResponse(value: unknown): value is TurnCredentialResponse {
