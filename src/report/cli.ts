@@ -266,6 +266,25 @@ function page(data: ReportData): string {
          }
          return rates.length === 0 ? [] : [{ color: COLORS[0], label, points: rates }];
        };
+       const counterDeltaSeries = (rows, column, labelFor) => {
+         const groups = new Map();
+         for (const row of rows) {
+           const timestamp = number(row.timestamp_ms); const value = number(row[column]);
+           if (timestamp === null || value === null) continue;
+           const label = labelFor(row); const key = text(row.stat_id) || label;
+           if (!groups.has(key)) groups.set(key, { label, points: [] });
+           groups.get(key).points.push({ timestamp, value, x: elapsedSeconds(timestamp) });
+         }
+         return [...groups.values()].map((group, index) => {
+           let previous;
+           const points = group.points.sort((left, right) => left.x - right.x).map((point) => {
+             const delta = previous === undefined ? 0 : point.value - previous;
+             previous = point.value;
+             return { timestamp: point.timestamp, x: point.x, y: Math.max(0, delta) };
+           });
+           return { color: COLORS[index % COLORS.length], label: group.label, points };
+         });
+       };
        const hasSamples = (rows, column) => rows.some((row) => number(row[column]) !== null);
       const chart = (title, unit, lines) => {
         lines = lines.map((line, index) => ({ ...line, color: COLORS[index % COLORS.length] }));
@@ -350,10 +369,12 @@ function page(data: ReportData): string {
         const outbound = timeline.filter((row) => text(row.direction) === "outbound");
         const remoteInbound = timeline.filter((row) => text(row.direction) === "remote-inbound");
         const mediaLabel = (row) => text(row.kind) + (text(row.rid) ? " rid=" + text(row.rid) : "");
+        const receiverLabel = (row) => mediaLabel(row) + (text(row.stat_id) ? " (" + text(row.stat_id) + ")" : "");
         area.append(
-          chartGroup("Inbound Media", "Receiver-side WebRTC metrics and the local playback element.", [
+          chartGroup("Inbound Media", "Receiver-side WebRTC metrics and the local playback element. Receiver freeze events are detected since the preceding sample.", [
             chart("Received media bitrate", "kbps", series(inbound, "bitrate_bps", mediaLabel, (value) => value / 1000)),
             chart("Decoder rate", "fps", series(inbound.filter((row) => text(row.kind) === "video"), "frames_per_second", mediaLabel, (value) => value)),
+            chart("Receiver freeze events", "events", counterDeltaSeries(inbound.filter((row) => text(row.kind) === "video"), "freeze_count", receiverLabel)),
             chart("Receiver resolution", "pixels", series(inbound.filter((row) => text(row.kind) === "video"), "height", mediaLabel, (value) => value)),
             chart("Network jitter", "ms", series(inbound, "jitter_ms", mediaLabel, (value) => value)),
             chart("Jitter buffer", "ms", [
@@ -386,6 +407,10 @@ function page(data: ReportData): string {
       const metadata = REPORT_DATA.metadata && typeof REPORT_DATA.metadata === "object" ? REPORT_DATA.metadata : {};
       const summary = REPORT_DATA.summary && typeof REPORT_DATA.summary === "object" ? REPORT_DATA.summary : {};
       const validation = summary.validation && typeof summary.validation === "object" ? summary.validation : { valid: false, errors: ["Missing summary validation"] };
+      const inboundVideo = REPORT_DATA.csv.timeline.filter((row) => text(row.direction) === "inbound" && text(row.kind) === "video");
+      const receiverFreezeEvents = hasSamples(inboundVideo, "freeze_count")
+        ? counterDeltaSeries(inboundVideo, "freeze_count", (row) => text(row.stat_id)).flatMap((line) => line.points).reduce((total, point) => total + point.y, 0)
+        : null;
       document.querySelector("#subtitle").textContent = text(metadata.room || REPORT_DATA.runDirectory) + " · " + text(metadata.mode || summary.mode || "unknown mode") + " · generated " + REPORT_DATA.generatedAt;
       const cards = document.querySelector("#summary-cards"); cards.append(
         card("Run status", text(summary.status || "unknown")),
@@ -394,6 +419,7 @@ function page(data: ReportData): string {
         card("Samples", text(summary.sampleCount || "0")),
         card("Video source", text(metadata.videoSource || "canvas")),
         card("Source FPS", text(summary.videoPacing && summary.videoPacing.source && summary.videoPacing.source.averageFps || "n/a")),
+        card("Receiver freezes", receiverFreezeEvents === null ? "not reported" : receiverFreezeEvents.toLocaleString() + " observed"),
         card("Raw stats", REPORT_DATA.rawStatsBytes === null ? "not found" : (REPORT_DATA.rawStatsBytes / 1024 / 1024).toFixed(1) + " MiB"),
       );
       const validationBox = document.querySelector("#validation"); const validationTitle = element("h2"); const badge = element("span", "status " + (validation.valid ? "good" : "bad")); badge.textContent = validation.valid ? "validated" : "failed"; validationTitle.append("Validation ", badge); validationBox.append(validationTitle);

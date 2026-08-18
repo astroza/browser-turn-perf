@@ -214,7 +214,7 @@ Generate a standalone visual report from an agent output directory:
 npm run report -- --input ./runs/direct_20260814_001/server-1
 ```
 
-This writes `report.html` beside the artifacts. Open it in a browser to inspect validation results, separate inbound and outbound bitrate/FPS/resolution charts, selected-pair transport throughput, optional browser-reported capacity, RTT, jitter-buffer delay, and playback quality. Hover a chart to inspect elapsed time and values; scroll to zoom, drag to pan, and double-click to reset. The report embeds all rows from `timeline.csv`, `connections.csv`, and `playback.csv`, with searchable tables for each dataset.
+This writes `report.html` beside the artifacts. Open it in a browser to inspect validation results, separate inbound and outbound bitrate/FPS/resolution charts, receiver freeze events, selected-pair transport throughput, optional browser-reported capacity, RTT, jitter-buffer delay, and playback quality. A positive receiver-freeze point means Chromium detected a receiver playback freeze since the preceding sample; correlate it with decoder FPS and network metrics rather than treating it as decoder-only evidence. Hover a chart to inspect elapsed time and values; scroll to zoom, drag to pan, and double-click to reset. The report embeds all rows from `timeline.csv`, `connections.csv`, and `playback.csv`, with searchable tables for each dataset.
 
 Use `--output` to write the report elsewhere:
 
