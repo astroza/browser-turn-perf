@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MAX_TEST_DURATION_MS, TEST_DURATION_MINUTE_MS } from "./config";
+
 export const identifierSchema = z
   .string()
   .min(1)
@@ -38,6 +40,7 @@ export const clientMessageSchema = z.discriminatedUnion("type", [
     .object({
       type: z.literal("join"),
       agentId: identifierSchema,
+      durationMs: z.number().int().min(TEST_DURATION_MINUTE_MS).max(MAX_TEST_DURATION_MS).multipleOf(TEST_DURATION_MINUTE_MS),
       expectedMembers: z.number().int().min(2).max(16),
     })
     .strict(),

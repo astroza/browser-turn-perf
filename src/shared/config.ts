@@ -3,6 +3,16 @@ import type { ServerMessage } from "./protocol";
 export type RunMode = "relay" | "direct";
 export type VideoSource = "canvas" | "fake-camera" | "webcam";
 
+const MAX_TIMER_DELAY_MS = 0x7fff_ffff;
+
+export const TEST_DURATION_MINUTE_MS = 60_000;
+export const DEFAULT_TEST_DURATION_MINUTES = 5;
+export const TEST_COMPLETION_GRACE_MS = 120_000;
+export const MAX_TEST_DURATION_MINUTES = Math.floor(
+  (MAX_TIMER_DELAY_MS - TEST_COMPLETION_GRACE_MS) / TEST_DURATION_MINUTE_MS,
+);
+export const DEFAULT_TEST_DURATION_MS = DEFAULT_TEST_DURATION_MINUTES * TEST_DURATION_MINUTE_MS;
+export const MAX_TEST_DURATION_MS = MAX_TEST_DURATION_MINUTES * TEST_DURATION_MINUTE_MS;
 export const TARGET_VIDEO_FPS = 30;
 export const MIN_AVERAGE_VIDEO_FPS = 29;
 export const MIN_WINDOW_VIDEO_FPS = 28.5;

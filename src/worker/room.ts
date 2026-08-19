@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 
+import { DEFAULT_TEST_DURATION_MS } from "../shared/config";
 import {
   clientMessageSchema,
   type RoomSocketState,
@@ -7,9 +8,8 @@ import {
   type ServerMessage,
 } from "../shared/protocol";
 
-const TEST_DURATION_MS = 5 * 60 * 1_000;
-
 type RoomConfig = {
+  durationMs: number;
   endsAt: number | null;
   expectedMembers: number;
   runId: string | null;
@@ -23,11 +23,16 @@ export class Room extends DurableObject<Env> {
       CREATE TABLE IF NOT EXISTS room_config (
         id INTEGER PRIMARY KEY CHECK (id = 1),
         expected_members INTEGER NOT NULL,
+        duration_ms INTEGER,
         status TEXT NOT NULL,
         run_id TEXT,
         ends_at INTEGER
       )
     `);
+    const roomColumns = this.ctx.storage.sql.exec<{ name: string }>("PRAGMA table_info(room_config)").toArray();
+    if (!roomColumns.some((column) => column.name === "duration_ms")) {
+      this.ctx.storage.sql.exec("ALTER TABLE room_config ADD COLUMN duration_ms INTEGER");
+    }
   }
 
   override async fetch(request: Request): Promise<Response> {
@@ -96,7 +101,7 @@ export class Room extends DurableObject<Env> {
     const state = this.socketState(webSocket);
     const clientMessage = parsedMessage.data;
     if (clientMessage.type === "join") {
-      await this.join(webSocket, state, clientMessage.agentId, clientMessage.expectedMembers);
+      await this.join(webSocket, state, clientMessage.agentId, clientMessage.expectedMembers, clientMessage.durationMs);
       return;
     }
 
@@ -163,6 +168,7 @@ export class Room extends DurableObject<Env> {
     currentState: RoomSocketState | null,
     agentId: string,
     expectedMembers: number,
+    durationMs: number,
   ): Promise<void> {
     if (currentState !== null) {
       this.send(webSocket, { type: "error", reason: "A WebSocket can join only once" });
@@ -178,14 +184,18 @@ export class Room extends DurableObject<Env> {
     const existingConfig = this.config();
     if (existingConfig === null) {
       this.ctx.storage.sql.exec(
-        "INSERT INTO room_config (id, expected_members, status, run_id, ends_at) VALUES (1, ?, 'collecting', NULL, NULL)",
+        "INSERT INTO room_config (id, expected_members, duration_ms, status, run_id, ends_at) VALUES (1, ?, ?, 'collecting', NULL, NULL)",
         expectedMembers,
+        durationMs,
       );
     } else if (existingConfig.status !== "collecting") {
       this.send(webSocket, { type: "error", reason: "This room has already started or failed; use a new room name" });
       return;
     } else if (existingConfig.expectedMembers !== expectedMembers) {
       this.send(webSocket, { type: "error", reason: "Room expected member count does not match" });
+      return;
+    } else if (existingConfig.durationMs !== durationMs) {
+      this.send(webSocket, { type: "error", reason: "Room test duration does not match" });
       return;
     }
 
@@ -229,20 +239,26 @@ export class Room extends DurableObject<Env> {
     }
 
     const runId = crypto.randomUUID();
-    const endsAt = Date.now() + TEST_DURATION_MS;
+    const endsAt = Date.now() + config.durationMs;
     this.ctx.storage.sql.exec(
       "UPDATE room_config SET status = 'running', run_id = ?, ends_at = ? WHERE id = 1",
       runId,
       endsAt,
     );
     await this.ctx.storage.setAlarm(endsAt);
-    this.broadcast({ type: "start", runId, durationMs: TEST_DURATION_MS });
+    this.broadcast({ type: "start", runId, durationMs: config.durationMs });
   }
 
   private config(): RoomConfig | null {
     const row = this.ctx.storage.sql
-      .exec<{ ends_at: number | null; expected_members: number; run_id: string | null; status: RoomConfig["status"] }>(
-        "SELECT expected_members, status, run_id, ends_at FROM room_config WHERE id = 1",
+      .exec<{
+        duration_ms: number | null;
+        ends_at: number | null;
+        expected_members: number;
+        run_id: string | null;
+        status: RoomConfig["status"];
+      }>(
+        "SELECT duration_ms, expected_members, status, run_id, ends_at FROM room_config WHERE id = 1",
       )
       .toArray()[0];
     if (row === undefined) {
@@ -250,6 +266,7 @@ export class Room extends DurableObject<Env> {
     }
 
     return {
+      durationMs: row.duration_ms ?? DEFAULT_TEST_DURATION_MS,
       endsAt: row.ends_at,
       expectedMembers: row.expected_members,
       runId: row.run_id,

@@ -642,7 +642,7 @@ export class ArtifactWriter {
       this.finalSampleTimestamp === undefined ||
       this.finalSampleTimestamp - this.firstSampleTimestamp < this.metadata.durationSeconds * 1_000 - 10_000
     ) {
-      errors.push("Stats timeline did not cover the full five-minute media phase");
+      errors.push(`Stats timeline did not cover the full ${this.metadata.durationSeconds}-second media phase`);
     }
     if (videoPacing.source === null) {
       errors.push("No paced video-source telemetry was received");

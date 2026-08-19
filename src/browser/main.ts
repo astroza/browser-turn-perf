@@ -1,4 +1,8 @@
-import { TARGET_VIDEO_FPS } from "../shared/config";
+import {
+  MAX_TEST_DURATION_MINUTES,
+  TARGET_VIDEO_FPS,
+  TEST_DURATION_MINUTE_MS,
+} from "../shared/config";
 import type {
   BrowserAgentConfig,
   BrowserAgentEvent,
@@ -99,6 +103,10 @@ function manualConfig(): BrowserAgentConfig {
   if (!Number.isSafeInteger(expectedMembers) || expectedMembers < 2 || expectedMembers > 8) {
     throw new Error("Expected members must be between 2 and 8");
   }
+  const durationMinutes = Number(value("duration-minutes"));
+  if (!Number.isSafeInteger(durationMinutes) || durationMinutes < 1 || durationMinutes > MAX_TEST_DURATION_MINUTES) {
+    throw new Error(`Test duration must be a whole number between 1 and ${MAX_TEST_DURATION_MINUTES} minutes`);
+  }
   const mode = value("mode");
   if (mode !== "relay" && mode !== "direct") {
     throw new Error("Connection mode is invalid");
@@ -109,7 +117,7 @@ function manualConfig(): BrowserAgentConfig {
   }
   return {
     agentId,
-    durationMs: 5 * 60 * 1_000,
+    durationMs: durationMinutes * TEST_DURATION_MINUTE_MS,
     expectedMembers,
     mode,
     room,
@@ -415,6 +423,7 @@ class BenchmarkAgent {
       this.send({
         type: "join",
         agentId: runConfig.agentId,
+        durationMs: runConfig.durationMs,
         expectedMembers: runConfig.expectedMembers,
       });
       this.state = "waiting-for-peers";

@@ -1,6 +1,6 @@
 # WebRTC TURN Benchmark
 
-Headless Chromium agents join a Cloudflare Worker room, exchange synthetic audio and paced video, and record browser WebRTC and playback metrics for five minutes. The same run can be forced through Cloudflare Realtime TURN or required to use a non-relay direct ICE path.
+Headless Chromium agents join a Cloudflare Worker room, exchange synthetic audio and paced video, and record browser WebRTC and playback metrics for a configurable duration. Tests run for five minutes by default. The same run can be forced through Cloudflare Realtime TURN or required to use a non-relay direct ICE path.
 
 Media never passes through the Worker. The Worker serves the harness, issues short-lived TURN credentials, and forwards SDP and ICE signaling only.
 
@@ -99,7 +99,7 @@ Use this user-delegated flow for attended benchmark runs.
 
 ## Run A TURN Test
 
-Start one command per host with the same room, mode, and expected-member count. The first agent waits until all peers are media-ready before the Durable Object starts the five-minute timer.
+Start one command per host with the same room, mode, expected-member count, and duration. The first agent waits until all peers are media-ready before the Durable Object starts the timer. Use `--duration-minutes <N>` on every agent to select a whole-number duration; it defaults to five minutes.
 
 Host 1:
 
@@ -139,12 +139,12 @@ https://webrtc-turn-benchmark.<account>.workers.dev/
 
 The page presents a manual test form. The signaling URL is prefilled from the current page, so leave it unchanged unless intentionally testing a different deployment. On two browser profiles or devices, enter:
 
-- The same room ID, expected-member count, and mode.
+- The same room ID, expected-member count, mode, and test duration.
 - A distinct agent ID for each participant, such as `browser-1` and `browser-2`.
 - `Force Cloudflare TURN relay` for a relay smoke test, or `Direct connection, no TURN` for a direct smoke test.
 - `Synthetic canvas test pattern` to avoid camera access, or `This browser's webcam` to publish the selected camera after granting the browser permission prompt.
 
-Click **Join five-minute test** in each browser. Remote videos become visible when tracks arrive; the page runs for five minutes and closes its room connection when the room timer completes. Cloudflare Access authenticates the page, API requests, and WebSocket upgrade.
+Set the test duration in minutes, then click **Join test** in each browser. Remote videos become visible when tracks arrive; the page runs for the selected duration and closes its room connection when the room timer completes. Cloudflare Access authenticates the page, API requests, and WebSocket upgrade.
 
 Manual mode is intended for connectivity and visual checks. It does not write local artifact files; use the Playwright agent for `raw-stats.ndjson`, CSV timelines, and validated summaries. In Chrome, open `chrome://webrtc-internals` in another tab before joining to inspect the manual session.
 
@@ -232,7 +232,7 @@ The benchmark fails when source, local encoder, or receiver decoder averages bel
 
 A mesh has no SFU. Do not interpret a resolution change alone as congestion control. For an adaptation finding, correlate encoded bitrate, selected-pair `availableOutgoingBitrate`, receiver-side decoded dimensions, loss/RTT, and `qualityLimitationReason: "bandwidth"`. Label CPU-limited runs separately.
 
-Repeat direct and relay runs from the same endpoint hosts, browser revision, media source, peer count, and network conditions. Compare distributions across repetitions, not a single five-minute result.
+Repeat direct and relay runs from the same endpoint hosts, browser revision, media source, peer count, duration, and network conditions. Compare distributions across repetitions, not a single test result.
 
 ## Development And Validation
 

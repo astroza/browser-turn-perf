@@ -4,13 +4,22 @@ import { chromium } from "playwright";
 
 import { authorizeCloudflareAccess } from "./access";
 import { ArtifactWriter, type ArtifactMetadata } from "./metrics";
-import type { BrowserAgentConfig, BrowserAgentEvent, RunMode, VideoSource } from "../shared/config";
+import {
+  DEFAULT_TEST_DURATION_MINUTES,
+  MAX_TEST_DURATION_MINUTES,
+  TEST_COMPLETION_GRACE_MS,
+  TEST_DURATION_MINUTE_MS,
+  type BrowserAgentConfig,
+  type BrowserAgentEvent,
+  type RunMode,
+  type VideoSource,
+} from "../shared/config";
 import { identifierSchema } from "../shared/protocol";
 
 type AgentOptions = {
   accessLogin: boolean;
   agentId: string;
-  durationSeconds: number;
+  durationMinutes: number;
   expectedMembers: number;
   mode: RunMode;
   outputDirectory: string;
@@ -34,7 +43,7 @@ function usage(): string {
     "  --access-login              Print an Access URL and wait for user authorization",
     "  --video-y4m <PATH>         Use a Y4M file through Chromium's fake camera",
     "  --output <PATH>            Local artifact directory",
-    "  --duration-seconds <N>     Must be 300; default: 300",
+    "  --duration-minutes <N>     Test duration in whole minutes; default: 5",
   ].join("\n");
 }
 
@@ -126,7 +135,7 @@ function optionsFrom(argv: string[]): AgentOptions {
   const knownOptions = new Set([
     "agent-id",
     "access-login",
-    "duration-seconds",
+    "duration-minutes",
     "expected-members",
     "mode",
     "output",
@@ -152,9 +161,9 @@ function optionsFrom(argv: string[]): AgentOptions {
   if (expectedMembers < 2 || expectedMembers > 8) {
     throw new Error("--expected-members must be between 2 and 8, matching the deployed room limit");
   }
-  const durationSeconds = integerOption(values, "duration-seconds", 300);
-  if (durationSeconds !== 300) {
-    throw new Error("--duration-seconds must be 300 because the room starts fixed five-minute runs");
+  const durationMinutes = integerOption(values, "duration-minutes", DEFAULT_TEST_DURATION_MINUTES);
+  if (durationMinutes < 1 || durationMinutes > MAX_TEST_DURATION_MINUTES) {
+    throw new Error(`--duration-minutes must be between 1 and ${MAX_TEST_DURATION_MINUTES}`);
   }
   const mode = requiredOption(values, "mode");
   if (mode !== "relay" && mode !== "direct") {
@@ -168,7 +177,7 @@ function optionsFrom(argv: string[]): AgentOptions {
   return {
     accessLogin: values.has("access-login"),
     agentId: identifierOption(values, "agent-id"),
-    durationSeconds,
+    durationMinutes,
     expectedMembers,
     mode,
     outputDirectory: requiredOption(values, "output"),
@@ -229,7 +238,7 @@ async function main(): Promise<void> {
   const metadata: ArtifactMetadata = {
     agentId: options.agentId,
     browserVersion: browser.version(),
-    durationSeconds: options.durationSeconds,
+    durationSeconds: options.durationMinutes * 60,
     expectedMembers: options.expectedMembers,
     mode: options.mode,
     room: options.room,
@@ -240,7 +249,7 @@ async function main(): Promise<void> {
   const artifacts = await ArtifactWriter.create(options.outputDirectory, metadata);
   const browserConfig: BrowserAgentConfig = {
     agentId: options.agentId,
-    durationMs: options.durationSeconds * 1_000,
+    durationMs: options.durationMinutes * TEST_DURATION_MINUTE_MS,
     expectedMembers: options.expectedMembers,
     mode: options.mode,
     room: options.room,
@@ -314,7 +323,7 @@ async function main(): Promise<void> {
   const timeout = setTimeout(() => {
     resolveCompletion?.();
     fatalMessage ??= "Timed out waiting for benchmark completion";
-  }, options.durationSeconds * 1_000 + 120_000);
+  }, options.durationMinutes * TEST_DURATION_MINUTE_MS + TEST_COMPLETION_GRACE_MS);
   try {
     await page.goto(new URL("/", options.signalOrigin).toString(), { waitUntil: "domcontentloaded" });
     await completion;

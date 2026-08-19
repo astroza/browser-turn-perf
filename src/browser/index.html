@@ -28,6 +28,10 @@
           <input name="expected-members" type="number" min="2" max="8" value="2" required />
         </label>
         <label>
+          Test duration (minutes)
+          <input name="duration-minutes" type="number" min="1" step="1" value="5" required />
+        </label>
+        <label>
           Connection mode
           <select name="mode">
             <option value="relay">Force Cloudflare TURN relay</option>
@@ -41,7 +45,7 @@
             <option value="webcam">This browser's webcam</option>
           </select>
         </label>
-        <button type="submit">Join five-minute test</button>
+        <button type="submit">Join test</button>
         <p id="setup-error" role="alert"></p>
       </form>
       <p id="status" aria-live="polite">Waiting for test configuration...</p>

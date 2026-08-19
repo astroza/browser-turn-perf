@@ -38,6 +38,28 @@ describe("signaling Worker", () => {
 });
 
 describe("signaling protocol", () => {
+  it("accepts a whole-minute test duration when joining", () => {
+    const result = clientMessageSchema.safeParse({
+      agentId: "server-1",
+      durationMs: 10 * 60_000,
+      expectedMembers: 2,
+      type: "join",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a test duration that is not a whole minute", () => {
+    const result = clientMessageSchema.safeParse({
+      agentId: "server-1",
+      durationMs: 90_000,
+      expectedMembers: 2,
+      type: "join",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it("normalizes Cloudflare's single ICE server credential shape", () => {
     const iceServers = normalizeCloudflareIceServers({
       iceServers: {
